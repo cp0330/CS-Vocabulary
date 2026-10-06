@@ -1,0 +1,17 @@
+_site/
+__pycache__/
+*.pyc
+node_modules/
+.DS_Store
+*.pdf
+*.txt
+*.zip
+*.png
+*.jpg
+*.jpeg
+*.mp3
+*.mp4
+*.wav
+.env*
+tmp/
+output/

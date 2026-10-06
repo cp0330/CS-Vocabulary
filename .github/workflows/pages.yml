@@ -1,0 +1,99 @@
+name: Build, check and deploy vocabulary
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: vocabulary-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+      - name: Merge weekly data and generate Markdown/site
+        run: python3 scripts/build.py
+      - name: Check preservation, sources, links and public output
+        run: python3 scripts/check.py
+      - name: Check merging behavior
+        run: python3 -m unittest discover -s tests
+      - name: Check both course interfaces
+        run: node tests/run.cjs
+      - name: Check delivered JavaScript syntax
+        run: |
+          node --check _site/882/app.js
+          node --check _site/985/app.js
+      - name: Upload checked Pages site
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+      - name: Upload generated weekly Markdown
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: weekly-markdown
+          path: data/*/weeks/*.md
+
+  deploy:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Deploy checked vocabulary
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  save-markdown:
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    needs: [build, deploy]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+      - name: Do not save stale generated files over newer data
+        id: current
+        run: |
+          if [ "$(git rev-parse HEAD)" = "$GITHUB_SHA" ]; then
+            echo "matching=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/download-artifact@v4
+        if: steps.current.outputs.matching == 'true'
+        with:
+          name: weekly-markdown
+          path: generated-markdown
+      - name: Save changed Markdown back to main
+        if: steps.current.outputs.matching == 'true'
+        run: |
+          cp -R generated-markdown/. data/
+          git add -- ':(glob)data/*/weeks/*.md'
+          if ! git diff --cached --quiet; then
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m 'Update generated weekly vocabulary Markdown [skip ci]'
+            git push origin HEAD:main
+          fi

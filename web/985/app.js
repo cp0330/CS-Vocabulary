@@ -1,19 +1,5 @@
-function unpackCourse(data){
- if(data.format!=='csit985-shared-values-v1'||!Array.isArray(data.nodes))throw Error('Invalid vocabulary data');
- const values=[];
- for(const node of data.nodes){
-  let value=node;
-  if(Array.isArray(node)){
-   if(node[0]===0){value={};for(let i=1;i<node.length;i+=2)value[values[node[i]]]=values[node[i+1]];}
-   else if(node[0]===1)value=node.slice(1).map(i=>values[i]);
-   else throw Error('Invalid shared value');
-  }
-  values.push(value);
- }
- return values[data.root];
-}
 function startVocabulary(course){
-/* VOCABULARY_RUNTIME_START */
+
 'use strict';
 
 const entries=course.entries,retiredEntries=course.retiredEntries||[],allEntries=[...entries,...retiredEntries];
@@ -75,17 +61,10 @@ $('import').onclick=()=>$('import-file').click();$('import-file').onchange=async
 for(const [week,notes] of Object.entries(course.notes)){const wrap=document.createElement('div');wrap.append(textNode('h2','Week'+week));const ul=document.createElement('ul');notes.forEach(n=>ul.append(textNode('li',(n.pages.length?'PDF页'+n.pages.join(',')+' / 同号幻灯片：':'TXT：')+n.text)));wrap.append(ul);$('notes').append(wrap);}
 render();
 
-/* VOCABULARY_RUNTIME_END */
+
 }
-(async()=>{
- try{
-  const response=await fetch('./course-data.json?v=ecde67a92812');
-  if(!response.ok)throw Error('Vocabulary download failed');
-  const course=unpackCourse(await response.json());
-  startVocabulary(course);
- }catch(error){
-  const count=document.getElementById('count');
-  count.textContent='词汇暂时未能加载，请刷新页面后重试。';
-  count.setAttribute('role','alert');
- }
-})();
+
+(async()=>{try{const response=await fetch('./course-data.json?v=@@DATA_HASH@@');
+if(!response.ok)throw Error('Vocabulary data could not be loaded');
+startVocabulary(await response.json());}catch(error){const target=document.getElementById('count');
+target.textContent='词汇暂时未能加载，请刷新页面后重试。';target.setAttribute('role','alert');}})();
