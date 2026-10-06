@@ -5,7 +5,7 @@
 | 课程 | 网页 | 已有周次 | 有效词条（迁移时） |
 |---|---|---|---|
 | CSIT882 | [882](https://cp0330.github.io/CS-Vocabulary/882/) | Week9、Week9B、Week10 | 296 |
-| CSIT985 | [985](https://cp0330.github.io/CS-Vocabulary/985/) | Week1–5 | 726 |
+| CSIT985 | [985](https://cp0330.github.io/CS-Vocabulary/985/) | Week1–9 | 726 |
 
 ## 目录
 

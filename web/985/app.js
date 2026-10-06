@@ -29,6 +29,11 @@ const index=new Map(allEntries.map(e=>[e.id,[e.term,e.en,e.zh,e.structure||'',..
 function filtered(){const q=$('search').value.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);return pool().filter(e=>(!$('week').value||e.weeks.includes(Number($('week').value)))&&(!$('lecture').value||e.lectures.includes($('lecture').value))&&(!$('topic').value||e.topics.includes($('topic').value))&&(!$('type').value||e.category===$('type').value)&&(!$('favorites-only').checked||favorites.has(e.id))&&q.every(word=>index.get(e.id).includes(word)));}
 function textNode(tag,text,cls){const n=document.createElement(tag);n.textContent=text;if(cls)n.className=cls;return n;}
 function details(summary){const n=document.createElement('details');n.append(textNode('summary',summary));return n;}
+function definitionStatus(e){
+ const defined=(e.occurrences||[]).filter(o=>o.formalDefinition===true&&(!$('week').value||o.week===Number($('week').value))&&(!$('lecture').value||(o.sources||[]).some(s=>s.file===$('lecture').value)));
+ if(defined.length){const weeks=[...new Set(defined.map(o=>o.week))].sort((a,b)=>a-b).map(w=>'Week'+w).join('、');return `课件给出原文定义（${weeks}）；不同周次的语境与来源分别保留。`;}
+ return e.definitionStatus||'当前资料未给出正式定义';
+}
 function render(){const rows=filtered(),pages=Math.max(1,Math.ceil(rows.length/pageSize));page=Math.min(page,pages);$('cards').replaceChildren();$('count').textContent=rows.length?`匹配 ${rows.length} 项`:'没有匹配词条';
  if(!rows.length)$('cards').append(textNode('p','可调整搜索、类别、周次或课件筛选。','empty'));
  for(const e of rows.slice((page-1)*pageSize,page*pageSize)){
@@ -38,7 +43,7 @@ function render(){const rows=filtered(),pages=Math.max(1,Math.ceil(rows.length/p
   const tags=document.createElement('div');tags.className='tags';[e.category,...e.lectureTitles].forEach(t=>tags.append(textNode('span',t,'tag')));card.append(tags);
   if(e.retired)card.append(textNode('p','原收藏保留项 · 不进入默认列表','archive-label'));
   const answer=document.createElement('div');answer.className='bilingual';answer.id='explanation-'+e.id;answer.hidden=recallMode&&!revealed.has(e.id);answer.append(textNode('p',e.zh,'meaning'));
-  if(e.category==='专业英语')answer.append(textNode('p',e.definitionStatus||'当前资料未给出正式定义','definition-status'));
+  if(e.category==='专业英语')answer.append(textNode('p',definitionStatus(e),'definition-status'));
   if(e.originals&&e.originals.length){const originals=details(e.category==='专业英语'?'课件原文（定义、名称或说明）':'资料中的用法片段');for(const q of e.originals){originals.append(textNode('p',q.role+' · '+sourceText(q.source),'context-label'),textNode('blockquote',q.text,'original-text'));}answer.append(originals);}
   const supplement=details('整理解释与补充说明');
   const occurrences=e.occurrences&&e.occurrences.length?e.occurrences:[e];

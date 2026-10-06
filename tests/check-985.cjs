@@ -12,7 +12,7 @@ const cards=()=>el('cards').children.filter(c=>c.dataset.id),answers=()=>cards()
 const currentEntries=()=>cards().map(c=>[...course.entries,...course.retiredEntries].find(e=>e.id===c.dataset.id));
 const recall=value=>{el('recall-mode').checked=value;event('recall-mode');};
 launch();assert.equal(el('recall-mode').checked,false);assert(answers().every(a=>!a.hidden));assert(reveals().every(b=>b.hidden));assert.equal(styles.get('--reading-size'),'18px');
-assert.deepEqual(el('week').children.map(n=>n.value),['',...course.lectures.map(l=>String(l.week))]);
+assert.deepEqual(el('week').children.map(n=>n.value),['',...[...new Set(course.lectures.map(l=>l.week))].sort((a,b)=>a-b).map(String)]);
 for(const lecture of course.lectures){
  el('week').value=String(lecture.week);event('week');assert(cards().length>0);assert(currentEntries().every(e=>e.weeks.includes(lecture.week)));
  el('lecture').value=lecture.id;event('lecture');assert(cards().length>0);assert(currentEntries().every(e=>e.lectures.includes(lecture.id)));
@@ -23,6 +23,16 @@ if(course.lectures.some(l=>l.week===1)){
  assert(el('source-summary').textContent.includes('从第33页开始收录'));
  for(const [week,word] of [[1,'PPDIOO'],[1,'八步设计'],[2,'demultiplexing'],[2,'分用']]){
   el('week').value=String(week);event('week');el('search').value=word;event('search');assert(cards().length>0);
+  recall(true);assert(answers().every(a=>a.hidden));reveals()[0].click();assert(!answers()[0].hidden);terms()[0].click();assert(answers()[0].hidden);recall(false);el('reset').click();
+ }
+}
+// New weekly data must be searchable in both languages and remain hidden in recall mode.
+for(const [week,lecture,en,zh] of [[6,'Week6a.pdf','Reference architecture','参考架构'],[6,'Week6b.pdf','IPSec','隧道'],[7,'Week7.pdf','ASN','自治系统号'],[8,'Week8.pdf','Shaping','整形'],[9,'Week9.pdf','MIB','管理信息库']]){
+ if(!course.lectures.some(l=>l.id===lecture))continue;
+ for(const word of [en,zh]){
+  el('week').value=String(week);event('week');el('lecture').value=lecture;event('lecture');el('search').value=word;event('search');
+  assert(cards().length>0,lecture+' lookup: '+word);assert(currentEntries().every(e=>e.weeks.includes(week)&&e.lectures.includes(lecture)));
+  if(lecture==='Week6a.pdf'&&word===en){const i=currentEntries().findIndex(e=>e.term==='Reference architecture');assert(i>=0);assert(answers()[i].children.find(n=>n.className==='definition-status').textContent.includes('Week6'));}
   recall(true);assert(answers().every(a=>a.hidden));reveals()[0].click();assert(!answers()[0].hidden);terms()[0].click();assert(answers()[0].hidden);recall(false);el('reset').click();
  }
 }
